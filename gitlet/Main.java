@@ -22,7 +22,11 @@ public class Main {
                 Repository.creatRepository();
                 break;
             case "add":
-                // TODO: handle the `add [filename]` command
+                String fileName = args[1];
+                Repository.addFiles(fileName);
+                break;
+            case "test":
+                Repository.test();
                 break;
             // TODO: FILL THE REST IN
             default:

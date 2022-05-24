@@ -36,7 +36,7 @@ public class Commit implements Serializable {
     /* The date when this commit was created. */
     private Date commitDate;
     /* The map which maps the file name to the SHA-1 hash code. */
-    private Map<File, String> contentMapping;
+    private Map<String, String> contentMapping;
 
     public Commit(String msg, String parent) {
         this.message = msg;
@@ -51,10 +51,13 @@ public class Commit implements Serializable {
             // TODO : read parent commit object from serialized file in .gitlet
         }
 
-        contentMapping = new HashMap<File, String>();
+        contentMapping = new HashMap<String, String>();
 
     }
 
+    public Map<String, String> getContentMapping() {
+        return contentMapping;
+    }
 
     /* TODO: fill in the rest of this class. */
 }
