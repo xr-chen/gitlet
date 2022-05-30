@@ -40,19 +40,24 @@ public class Commit implements Serializable {
 
     public Commit(String msg, String parent) {
         this.message = msg;
-        commitDate = new Date();
+        this.commitDate = new Date();
 
         if (this.parent == null) {
             // no parent is provided we assume that this is the 0th commit
-            commitDate.setTime(0);
+            this.commitDate.setTime(0);
+            contentMapping = new HashMap<String, String>();
         } else {
             this.parent = parent;
-
-            // TODO : read parent commit object from serialized file in .gitlet
         }
+    }
 
-        contentMapping = new HashMap<String, String>();
 
+    public void updateContent(Map<String, String> previous, Map<String, String> staged) {
+        /* Update previous commit map if new file was added or changed.*/
+        this.contentMapping = new HashMap<String, String>(previous);
+        for (String file : staged.keySet()) {
+            this.contentMapping.put(file, staged.get(file));
+        }
     }
 
     public Map<String, String> getContentMapping() {

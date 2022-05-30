@@ -23,12 +23,19 @@ public class Main {
                 break;
             case "add":
                 String fileName = args[1];
+                // TODO : implement another method in Repository to support add . command
                 Repository.addFiles(fileName);
                 break;
             case "test":
                 Repository.test();
                 break;
-            // TODO: FILL THE REST IN
+            case "commit":
+                if (args.length <= 1 || args[1] == null || args[1].equals("")) {
+                    System.out.println("Please enter a commit message");
+                    System.exit(0);
+                }
+                Repository.commit(args[1]);
+                break;
             default:
                 System.out.println("No command with that name exists");
                 System.exit(0);
