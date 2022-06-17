@@ -4,16 +4,13 @@ package gitlet;
 
 import java.io.File;
 import java.io.Serializable;
-import java.util.Date; // TODO: You'll likely use this in this class
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
+import java.util.*;
 
 /** Represents a gitlet commit object.
  *  TODO: It's a good idea to give a description here of what else this Class
  *  does at a high level.
  *
- *  @author TODO
+ *  @author Xingrong Chen
  */
 public class Commit implements Serializable {
     /**
@@ -45,23 +42,43 @@ public class Commit implements Serializable {
         if (this.parent == null) {
             // no parent is provided we assume that this is the 0th commit
             this.commitDate.setTime(0);
-            contentMapping = new HashMap<String, String>();
         } else {
             this.parent = parent;
         }
+        contentMapping = new TreeMap<String, String>();
     }
 
-
-    public void updateContent(Map<String, String> previous, Map<String, String> staged) {
-        /* Update previous commit map if new file was added or changed.*/
-        this.contentMapping = new HashMap<String, String>(previous);
-        for (String file : staged.keySet()) {
-            this.contentMapping.put(file, staged.get(file));
-        }
+    public Commit(String msg, String parent, Map<String, String> parentMap) {
+        this.message = msg;
+        this.commitDate = new Date();
+        this.parent = parent;
+        contentMapping = new TreeMap<String, String>(parentMap);
     }
+
 
     public Map<String, String> getContentMapping() {
         return contentMapping;
+    }
+
+    /* Get the sha1 hash of a committed blob*/
+    public String getId(String fileName) {
+        return contentMapping.get(fileName);
+    }
+
+    public boolean contains(String fileName) {
+        return contentMapping.containsKey(fileName);
+    }
+
+    public String getParent() {
+        return parent;
+    }
+
+    public Date getCommitDate() {
+        return commitDate;
+    }
+
+    public String getMessage() {
+        return message;
     }
 
     /* TODO: fill in the rest of this class. */
