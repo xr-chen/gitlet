@@ -47,7 +47,7 @@ public class Main {
                 break;
             case "commit":
                 checkExist();
-                if (args.length <= 1 || args[1] == null || args[1].equals("")) {
+                if (args.length <= 1 || args[1] == null || args[1].isEmpty()) {
                     System.out.println("Please enter a commit message");
                     System.exit(0);
                 }
@@ -65,8 +65,32 @@ public class Main {
                 Repository.test();
                 break;
             case "checkout":
-                /* TODO : java gitlet.Main checkout [branch name]. */
-                Repository.checkoutFile(args);
+                if (args.length <= 1 || args[1] == null ||  args[1].equals("")) {
+                    System.out.println("Please enter a file name to checkout");
+                    System.exit(0);
+                }
+                if (args.length == 2) {
+                    Repository.checkOutBranch(args[1]);
+                } else if (args[1].equals("--") && args.length == 3) {
+                    Repository.checkoutFileInCommit(args[2], Branch.getHeadId());
+                } else if (args.length == 4 && args[2].equals("--")) {
+                    Repository.checkoutFileInCommit(args[3], args[1]);
+                } else {
+                    System.out.println("Wrong arguments,");
+                    System.out.println("    java gitlet.Main checkout -- [file name]");
+                    System.out.println("    java gitlet.Main checkout [commit id] -- [file name]");
+                    System.out.println("    java gitlet.Main checkout [branch name]");
+                }
+                break;
+            case "global-log":
+                Repository.globalLog();
+                break;
+            case "find":
+                if (args.length <= 1 || args[1] == null || args[1].isEmpty()) {
+                    System.out.println("Please enter a commit message");
+                    System.exit(0);
+                }
+                Repository.findWithMsg(args[1]);
                 break;
             default:
                 System.out.println("No command with that name exists");

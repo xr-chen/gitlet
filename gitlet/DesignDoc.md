@@ -34,3 +34,4 @@
 - [ ] log : log for merged branch
 - [ ] branch : implement a class for storing heads of each branches.
 - [ ] status : The final category (“Untracked Files”) is for files present in the working directory but neither staged for addition nor tracked. This includes files that have been staged for removal, but then re-created without Gitlet’s knowledge.
+- [ ] branch : probably affect the function of checkout, commit
