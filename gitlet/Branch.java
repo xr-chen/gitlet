@@ -27,8 +27,13 @@ public class Branch {
         writeContents(HEAD, branchName);
     }
 
-    private static void updateHead(String branchName, String commitId) {
-        writeContents(join(BRANCH, branchName), commitId);
+    /* Update the head pointer of current branch. */
+    public static void updateHead(String commmitID) {
+        writeContents(join(BRANCH, readContentsAsString(HEAD)), commmitID);
+    }
+
+    private static void updateHead(String branchName, String commitID) {
+        writeContents(join(BRANCH, branchName), commitID);
     }
     /* Update the head commit of current active branch,
        and store the sha1 hash of that commit in .gitlet/commits. */
@@ -73,6 +78,18 @@ public class Branch {
                 System.out.println(branch);
             }
         }
+    }
+
+    public static void deleteBranch(String branchName) {
+        if (!join(BRANCH, branchName).exists()) {
+            System.out.println("A branch with that name does not exist.");
+            System.exit(1);
+        }
+        if (readContentsAsString(HEAD).equals(branchName)) {
+            System.out.println("Cannot remove the current branch.");
+            System.exit(1);
+        }
+        join(BRANCH, branchName).delete();
     }
 
 }

@@ -1,5 +1,7 @@
 package gitlet;
 
+import java.util.Arrays;
+
 /** Driver class for Gitlet, a subset of the Git version-control system.
  *  @author Xingrong Chen
  */
@@ -35,7 +37,7 @@ public class Main {
                     System.out.println("Please enter a file name");
                     System.exit(0);
                 }
-                Repository.add(args[1]);
+                Repository.add(args);
                 break;
             case "rm":
                 checkExist();
@@ -60,9 +62,6 @@ public class Main {
             case "status":
                 checkExist();
                 Repository.printStatus();
-                break;
-            case "test":
-                Repository.test();
                 break;
             case "checkout":
                 if (args.length <= 1 || args[1] == null ||  args[1].equals("")) {
@@ -91,6 +90,34 @@ public class Main {
                     System.exit(0);
                 }
                 Repository.findWithMsg(args[1]);
+                break;
+            case "branch":
+                if (args.length <= 1 || args[1] == null || args[1].isEmpty()) {
+                    System.out.println("Please enter a branch name");
+                    System.exit(0);
+                }
+                Repository.branch(args[1]);
+                break;
+            case "rm-branch":
+                if (args.length <= 1 || args[1] == null || args[1].isEmpty()) {
+                    System.out.println("Please enter a branch name");
+                    System.exit(0);
+                }
+                Repository.removeBranch(args[1]);
+                break;
+            case "reset":
+                if (args.length <= 1 || args[1] == null || args[1].isEmpty()) {
+                    System.out.println("Please enter a commit id.");
+                    System.exit(0);
+                }
+                Repository.reset(args[1]);
+                break;
+            case "merge":
+                if (args.length <= 1 || args[1] == null || args[1].isEmpty()) {
+                    System.out.println("Please enter a branch name");
+                    System.exit(0);
+                }
+                Repository.merge(args[1]);
                 break;
             default:
                 System.out.println("No command with that name exists");
