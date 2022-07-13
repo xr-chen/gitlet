@@ -2,34 +2,43 @@ package gitlet;
 
 import java.io.File;
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
-import static gitlet.Repository.*;
+import static gitlet.Repository.BLOBS;
+import static gitlet.Repository.STAGED;
 import static gitlet.Repository.CWD;
-import static gitlet.Utils.*;
+import static gitlet.Utils.join;
+import static gitlet.Utils.plainFilenamesIn;
+import static gitlet.Utils.readContentsAsString;
+import static gitlet.Utils.readObject;
+import static gitlet.Utils.sha1;
+import static gitlet.Utils.writeContents;
 
+/** Represents a gitlet Staged object, which contains the files were staged for addition,
+ *  or staged for removal, assists to create a new commit object based on staged files,
+ *  and identify untracked files and unknown modification of files in CWD
+ *
+ *  @author Xingrong Chen
+ */
 public class Staged implements Serializable {
 
-    /* map the file name to sha1ID of file content or a string,
-    if the value is sha1ID of file content, then this file was staged for addition
+    /* map the file name to its reference to blob (sha1ID of file content) or a string,
+    * if the value is a reference, then this file was staged for addition
     * if the value is "remove", then this file was staged for removal. */
-    private Map<String, String> stageMap = new TreeMap<String, String>();
-    // Record files which are previously committed.
-    /* Store name of files which are going to be removed in next commit*/
+    private final Map<String, String> stageMap = new TreeMap<>();
 
     public boolean isEmpty() {
         return stageMap.isEmpty();
     }
 
-    public Map<String, String> getStageMap() {
-        return stageMap;
-    }
-
     public List<String> getStagedFiles() { return new ArrayList<>(stageMap.keySet()); }
 
-
-    /* When this file is ready to be committed, remove last two '-' in the name of
-       corresponding blob file, then delete this file name from stage map. */
+    /* When this file is ready to be committed, rename the corresponding blob file (remove the last two '-'),
+    *  then remove this file from stage map. */
     public String clearStageSymbol(String fileName) {
         String curID = stageMap.get(fileName);
         String returnID = curID.substring(0, curID.length() - 2);
@@ -53,7 +62,7 @@ public class Staged implements Serializable {
         stageMap.put(fileName, "remove");
     }
 
-    /* Deleted the file name from stage map and then the file was staged. */
+    /* Remove file from stage map and delete the corresponding stage blob. */
     public void unStaged(String fileName) {
         if (!stageMap.containsKey(fileName)) {
             return;
@@ -65,7 +74,7 @@ public class Staged implements Serializable {
         stageMap.remove(fileName);
     }
 
-    /* Update the file which contains information about a Staged object*/
+    /* Replace serialized Staged object in .getlet/ with this Staged object.*/
     public void updateStageFile() {
         if (stageMap.isEmpty()) {
             STAGED.delete();
@@ -80,7 +89,7 @@ public class Staged implements Serializable {
         }
         return readObject(STAGED, Staged.class);
     }
-
+    /* Stage a file for addition*/
     public void stageFileForAddition(String fileName, String fileContent, String blobID) {
         if (stageMap.containsKey(fileName)) {
             if (stageMap.get(fileName).equals(blobID)) return;
@@ -89,7 +98,7 @@ public class Staged implements Serializable {
         stageMap.put(fileName, blobID);
         writeContents(join(BLOBS, blobID), fileContent);
     }
-
+    /* Delete all cache file (temporary blob) and delete the serialized Staged object.*/
     public void cleanStageArea() {
         for (String file : stageMap.keySet()) {
             String blobId = stageMap.get(file);
@@ -97,7 +106,7 @@ public class Staged implements Serializable {
         }
         STAGED.delete();
     }
-
+    /* Print the status of staged files.*/
     public void printStageStatus() {
         System.out.println("=== Staged For Addition ===");
         List<String> stageForRemoval = new ArrayList<>();
@@ -108,16 +117,17 @@ public class Staged implements Serializable {
                 System.out.println(file.getKey());
             }
         }
-        System.out.println("");
+        System.out.println();
         System.out.println("=== Staged For Removal ===");
         for (String file : stageForRemoval) {
             System.out.println(file);
         }
-        System.out.println("");
+        System.out.println();
     }
-
+    /* Find out any untracked files and unknown modification in CWD.*/
     public void reviewChange(List<String> unknownModification, List<String> unTracked) {
         List<String> allFiles = plainFilenamesIn(CWD);
+        assert allFiles != null;
         Commit head = Branch.getHead();
         Map<String, String> storedFiles = new TreeMap<>(head.getContentMapping());
         /* Update the reference if the file was changed and was staged for addition. */
@@ -145,15 +155,15 @@ public class Staged implements Serializable {
                 /* Files that have been staged for removal, but then re-created without Gitlet’s knowledge.*/
                 if (storedFiles.get(fileInCwd).equals("remove")) {
                     unTracked.add(fileInCwd);
-                    continue;
-                }
-                String cwdContent = readContentsAsString(join(CWD, fileInCwd));
-                String contentID = sha1(cwdContent);
-                String trackedID = storedFiles.get(fileInCwd);
+                } else {
+                    String cwdContent = readContentsAsString(join(CWD, fileInCwd));
+                    String contentID = sha1(cwdContent);
+                    String trackedID = storedFiles.get(fileInCwd);
                 /* Tracked in the current commit, changed in the working directory, but not staged;
                    Staged for addition, but with different contents than in the working directory; */
-                if (!trackedID.equals(contentID) && !trackedID.equals(contentID + "--")) {
-                    unknownModification.add(fileInCwd + " (Modified)");
+                    if (!trackedID.equals(contentID) && !trackedID.equals(contentID + "--")) {
+                        unknownModification.add(fileInCwd + " (Modified)");
+                    }
                 }
                 trackedFile = iter.hasNext() ? iter.next() : null;
                 ptr += 1;

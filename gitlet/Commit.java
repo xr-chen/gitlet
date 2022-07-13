@@ -1,51 +1,49 @@
 package gitlet;
 
-// TODO: any imports you need here
-
 import java.io.File;
 import java.io.Serializable;
-import java.util.*;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
-import static gitlet.Repository.*;
-import static gitlet.Utils.*;
+import static gitlet.Repository.BLOBS;
+import static gitlet.Repository.COMMITS;
+import static gitlet.Repository.CWD;
+import static gitlet.Utils.join;
+import static gitlet.Utils.plainFilenamesIn;
+import static gitlet.Utils.readContentsAsString;
+import static gitlet.Utils.readObject;
+import static gitlet.Utils.writeContents;
 
-/** Represents a gitlet commit object.
- *  TODO: It's a good idea to give a description here of what else this Class
- *  does at a high level.
+/** Represents a gitlet commit object
+ *  which includes metadata of a commit (data, commit message, reference to parent commit),
+ *  also contains some methods to create a new commit, get the head commit object of each branch,
+ *  and display metadata of a specific commit.
  *
  *  @author Xingrong Chen
  */
 public class Commit implements Serializable {
-    /**
-     *
-     * List all instance variables of the Commit class here with a useful
-     * comment above them describing what that variable represents and how that
-     * variable is used. We've provided one example for `message`.
-     */
 
-    /* Combinations of log messages, other metadata (commit date, author, etc.), a reference to a tree,
-     and references to parent commits. The repository also maintains a mapping from branch heads to references
-     to commits, so that certain important commits have symbolic names.*/
-
-    /** The message of this Commit. */
-    private String message;
-    /* The SHA-1 hash strings of parent commit of this commit. */
-    private String parent;
-    /* The date when this commit was created. */
-    private Date commitDate;
-    /* The map which maps the file name to the SHA-1 hash code. */
-    private Map<String, String> contentMapping;
-
+    /** Commit message. */
+    private final String message;
+    /* Reference (SHA-1 hash) to parent commit object. */
+    private final String parent;
+    /* When this commit was created, date of initial commit is always the (Unix) Epoch. */
+    private final Date commitDate;
+    /* Maps the file name to the blob reference (SHA-1 hash). */
+    private final Map<String, String> contentMapping;
+    /* A merged commit will have the second parent.*/
     private String secondParent = null;
 
     public Commit(String msg, String parent) {
         this.message = msg;
         this.commitDate = new Date();
+        this.parent = parent;
         if (parent == null) {
-            // no parent is provided we assume that this is the 0th commit
+            /*initial commit have no parent.*/
             this.commitDate.setTime(0);
-        } else {
-            this.parent = parent;
         }
         contentMapping = new TreeMap<>();
     }
@@ -58,11 +56,11 @@ public class Commit implements Serializable {
     public boolean contains(String fileName) {
         return contentMapping.containsKey(fileName);
     }
-    /* Return if the given file in working dir has the same content as it in this commit. */
+    /* Return if the given file was tracked and has the same content in this commit. */
     public boolean tracked(String fileName, String contentId) {
         return contentMapping.getOrDefault(fileName, "").equals(contentId);
     }
-
+    /* Return the reference of parent commit.*/
     public String getParent() {
         return parent;
     }
@@ -70,7 +68,7 @@ public class Commit implements Serializable {
     public String getMessage() {
         return message;
     }
-
+    /* Return the commit object with given ID.*/
     public static Commit getCommitByID (String ID) {
         if (ID == null) {
             return null;
@@ -81,7 +79,7 @@ public class Commit implements Serializable {
         }
         return readObject(join(COMMITS, ID), Commit.class);
     }
-
+    /* Put the file tracked in this commit to current working directory.*/
     public void checkoutFile(String fileName) {
         if (!contentMapping.containsKey(fileName)) {
             System.out.println("File does not exist in this commit.");
@@ -91,7 +89,8 @@ public class Commit implements Serializable {
         String fileContent = readContentsAsString(join(BLOBS, fileID));
         writeContents(join(CWD, fileName), fileContent);
     }
-
+    /* Inherit file information from parent commit, add files that were staged for addition
+    , and untrack files that were staged for removal.*/
     public void updateContentForCommit(Staged staged) {
         contentMapping.putAll(getCommitByID(parent).getContentMapping());
         for (String file : staged.getStagedFiles()) {
@@ -103,18 +102,18 @@ public class Commit implements Serializable {
             }
         }
     }
-
+    /* Display sha1 hash of this node, commit date and commit message.*/
     public void displayCommitNode (String nodeID) {
         System.out.println("===");
         System.out.println("commit" + " " + nodeID);
         if (secondParent != null) {
-            System.out.println(String.format("Merge: %s %s", parent.substring(0, 7), secondParent.substring(0, 7)));
+            System.out.printf("Merge: %s %s%n", parent.substring(0, 7), secondParent.substring(0, 7));
         }
         System.out.println("Date:" + " " + commitDate.toString());
         System.out.println(message);
-        System.out.println("");
+        System.out.println();
     }
-
+    /* Delete all files in CWD if they were tracked by this commit.*/
     public void deleteTrackedFileInCWD () {
         for (String file : contentMapping.keySet()) {
             File cur = join(CWD, file);
@@ -123,7 +122,7 @@ public class Commit implements Serializable {
             }
         }
     }
-
+    /* Delete all files tracked by preHead and put all files tracked by this commit to CWD.*/
     public void checkout(Commit preHead) {
         preHead.checkUnTrackedFiles();
         preHead.deleteTrackedFileInCWD();
@@ -132,9 +131,10 @@ public class Commit implements Serializable {
             writeContents(join(CWD, file), fileContent);
         }
     }
-
+    /* Check if any files in CWD is untracked by this commit.*/
     public void checkUnTrackedFiles() {
         List<String> filesInCWD = plainFilenamesIn(CWD);
+        assert filesInCWD != null;
         for (String file : filesInCWD) {
             if (!contentMapping.containsKey(file)) {
                 System.out.println("There is an untracked file in the way; delete it, or add and commit it first.");
@@ -142,7 +142,7 @@ public class Commit implements Serializable {
             }
         }
     }
-
+    /* Find the latest common ancestor of two commits.*/
     public static String latestCommonAncestor(String c1, String c2) {
         while (!c1.equals(c2)) {
             c1 = c1 == null ? c2 : getCommitByID(c1).getParent();
@@ -150,7 +150,7 @@ public class Commit implements Serializable {
         }
         return c1;
     }
-
+    /* Compare tracked files in two commits, */
     public Map<String, String> compareDiff(Commit other) {
         Map<String, String> res = new TreeMap<>();
 

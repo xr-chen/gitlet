@@ -1,16 +1,21 @@
 package gitlet;
 
-import java.io.Serializable;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.io.File;
 
-import static gitlet.Repository.*;
-import static gitlet.Utils.*;
+import static gitlet.Repository.GITLET_DIR;
+import static gitlet.Repository.HEAD;
+import static gitlet.Repository.COMMITS;
+import static gitlet.Utils.join;
+import static gitlet.Utils.writeContents;
+import static gitlet.Utils.readContentsAsString;
+import static gitlet.Utils.plainFilenamesIn;
 
-
-
+/** Represents a gitlet branch, which is able to update HEAD commit of current branch,
+ * create a new branch, and switch to an existed branch in repository.
+ *
+ *  @author Xingrong Chen
+ */
 public class Branch {
     public static final File BRANCH = join(GITLET_DIR, "heads");
 
@@ -73,6 +78,7 @@ public class Branch {
         List<String> branches = plainFilenamesIn(BRANCH);
         String curBranch = readContentsAsString(HEAD);
         System.out.println("*" + curBranch);
+        assert branches != null;
         for (String branch : branches) {
             if (!branch.equals(curBranch)) {
                 System.out.println(branch);
@@ -91,5 +97,4 @@ public class Branch {
         }
         join(BRANCH, branchName).delete();
     }
-
 }

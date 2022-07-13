@@ -1,39 +1,39 @@
 package gitlet;
 
 import java.io.File;
-import java.util.*;
+import java.util.Map;
+import java.util.List;
+import java.util.Collections;
+import java.util.ArrayList;
+import java.util.Iterator;
 
 import static gitlet.Commit.getCommitByID;
-import static gitlet.Utils.*;
+import static gitlet.Utils.join;
+import static gitlet.Utils.plainFilenamesIn;
+import static gitlet.Utils.readObject;
+import static gitlet.Utils.readContentsAsString;
+import static gitlet.Utils.sha1;
 import static gitlet.Branch.BRANCH;
 
-// TODO: any imports you need here
-
 /** Represents a gitlet repository.
- *  TODO: It's a good idea to give a description here of what else this Class
- *  does at a high level.
+ *  It contains several functional path for a gitlet repository,
+ *  and directly handles all the command passed from Main
  *
  *  @author Xingrong Chen
  */
 public class Repository {
-    /**
-     * TODO: add instance variables here.
-     *
-     * List all instance variables of the Repository class here with a useful
-     * comment above them describing what that variable represents and how that
-     * variable is used. We've provided two examples for you.
-     */
+
     /** The current working directory. */
     public static final File CWD = new File(System.getProperty("user.dir"));
     /** The .gitlet directory. */
     public static final File GITLET_DIR = join(CWD, ".gitlet");
     /* The directory contains backup files. */
     public static final File BLOBS = join(GITLET_DIR, "blobs");
-    /* The directory contains information about commits. */
+    /* The folder contains serialized commit object. */
     public static final File COMMITS = join(GITLET_DIR, "commits");
-    /* The file records name of branch or sha1Id of commit which head pointer is on.*/
+    /* The file which records branch name or sha1Id of commit object which the head pointer is on.*/
     public static final File HEAD = join(GITLET_DIR, "HEAD");
-    /* The file records the file be staged*/
+    /* Serialized Staged object*/
     public static final File STAGED = join(GITLET_DIR, "STAGED");
 
     public static boolean isRepositoryDir() {
@@ -46,7 +46,7 @@ public class Repository {
             System.out.println(msg);
             return;
         }
-        // create all the necessary working directories.
+        /* Create all necessary working directories.*/
         GITLET_DIR.mkdir();
         BLOBS.mkdir();
         COMMITS.mkdir();
@@ -62,8 +62,8 @@ public class Repository {
     public static void add(String[] fileName) {
         Staged curStaged = Staged.getStaged();
         Commit previous = Branch.getHead();
-        /* We distinguish staged blob from committed blob by file name,
-         * if a blob is a staged blob, then its name ends with '--'. */
+        /* We distinguish temporary blob (blob of staged file) from permanent blob by file name,
+         * if a blob is a temporary blob, then its name ends with '--'. */
         List<String> allFiles = getFiles(fileName);
         for (String file : allFiles) {
             String fileContent = Utils.readContentsAsString(join(CWD, file));
@@ -125,6 +125,7 @@ public class Repository {
 
     public static void globalLog() {
         List<String> allCommit = plainFilenamesIn(COMMITS);
+        assert allCommit != null;
         for (String commit : allCommit) {
             Commit cur = readObject(join(COMMITS, commit), Commit.class);
             cur.displayCommitNode(commit);
@@ -133,6 +134,7 @@ public class Repository {
 
     public static void findWithMsg(String msg) {
         List<String> allCommit = plainFilenamesIn(COMMITS);
+        assert allCommit != null;
         for (String commit : allCommit) {
             Commit cur = readObject(join(COMMITS, commit), Commit.class);
             if (cur.getMessage().equals(msg)) {
@@ -145,7 +147,7 @@ public class Repository {
         Staged curStage = Staged.getStaged();
         System.out.println("=== Branches ===");
         Branch.printAllBranches();
-        System.out.println("");
+        System.out.println();
         /* Status of files were staged for addition or removal. */
         curStage.printStageStatus();
         List<String> unknownModification = new ArrayList<>();
@@ -156,13 +158,13 @@ public class Repository {
         for (String file : unknownModification) {
             System.out.println(file);
         }
-        System.out.println("");
+        System.out.println();
         System.out.println("=== Untracked Files ===");
         Collections.sort(unTracked);
         for (String file : unTracked) {
             System.out.println(file);
         }
-        System.out.println("");
+        System.out.println();
     }
 
     public static void checkoutFileInCommit(String fileName, String commitId) {
@@ -235,19 +237,17 @@ public class Repository {
                 } else if (givenFile.getKey().equals(thisFile.getKey())) {
                     String[] givenVal = givenFile.getValue().split(",");
                     String[] thisVal = thisFile.getValue().split(",");
-                    if (givenVal[1].equals(thisVal[1]) && givenVal[0].equals(thisVal[0])) {
-                        continue;
-                    } else {
+                    if (!givenVal[1].equals(thisVal[1]) || !givenVal[0].equals(thisVal[0])) {
                         System.out.println("Encountered a merge conflict.");
-                        StringBuilder sb = new StringBuilder();
-                        sb.append("<<<<<<< HEAD\n");
-                        sb.append(thisVal[1].equals("deleted") ? "" : readContentsAsString(join(BLOBS, thisVal[0])));
-                        sb.append("=======\n");
-                        sb.append(givenVal[1].equals("deleted") ? "" : readContentsAsString(join(BLOBS, givenVal[0])));
-                        sb.append(">>>>>>>\n");
-                        String content = sb.toString();
+                        String content = "<<<<<<< HEAD\n" +
+                                (thisVal[1].equals("deleted") ? "" : readContentsAsString(join(BLOBS, thisVal[0]))) +
+                                "=======\n" +
+                                (givenVal[1].equals("deleted") ? "" : readContentsAsString(join(BLOBS, givenVal[0]))) +
+                                ">>>>>>>\n";
                         curStage.stageFileForAddition(thisFile.getKey(), content, sha1(content) + "--");
                     }
+                    givenFile = givenIter.hasNext() ? givenIter.next() : null;
+                    thisFile = thisIter.hasNext() ? thisIter.next() : null;
                 }
             }
         }
@@ -273,7 +273,9 @@ public class Repository {
             if (cur.isFile()) {
                 allFiles.add(fileName[i]);
             } else {
-                allFiles.addAll(plainFilenamesIn(cur));
+                List<String> files = plainFilenamesIn(cur);
+                assert files != null;
+                allFiles.addAll(files);
             }
         }
         return allFiles;
